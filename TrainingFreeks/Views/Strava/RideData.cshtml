@@ -1,0 +1,44 @@
+﻿@*
+    For more information on enabling MVC for empty projects, visit http://go.microsoft.com/fwlink/?LinkID=397860
+*@
+@{
+    Strava.Activities.Activity ride = ViewData["rideData"] as Strava.Activities.Activity;
+    List<string> poly = ViewData["poly"] as List<string>;
+    List<Strava.Streams.ActivityStream> watts = ViewData["watts"] as List<Strava.Streams.ActivityStream>;=
+        }
+<h1>@ride.Name</h1>
+<div id="map" style="height:300px;"></div>
+
+<ul>
+    @{ 
+        foreach(var t in )
+        {
+            <li>
+                @t.;
+            </li>
+
+        }
+    }
+</ul>
+
+
+<script>
+
+            function initMap() {
+                var map = new google.maps.Map(document.getElementById('map'), {
+            zoom: 10,
+            center: { lat: @ride.StartLatitude.Value.ToString(), lng: @ride.StartLongitude.Value.ToString() },
+            mapTypeId: 'terrain'
+                });
+        var flightPath = new google.maps.Polyline({
+            
+            geodesic: true,
+            strokeColor: '#FF0000',
+            strokeOpacity: 1.0,
+            strokeWeight: 2
+        });
+
+        flightPath.setMap(map);
+    }
+</script>
+<script async defer src="https://maps.googleapis.com/maps/api/js?key=AIzaSyA6PJtOdTLntPSW5YypwsTP0lMig6MDHa0&callback=initMap"></script>
