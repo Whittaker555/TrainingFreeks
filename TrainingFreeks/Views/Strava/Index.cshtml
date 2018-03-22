@@ -1,0 +1,417 @@
+﻿@*
+    For more information on enabling MVC for empty projects, visit http://go.microsoft.com/fwlink/?LinkID=397860
+*@
+
+@{
+
+    ViewData["Title"] = "Ride data";
+    Strava.Activities.Summary sum = ViewData["weekSum"] as Strava.Activities.Summary;
+    var dt = ViewData["date"];
+    List<decimal> data = new List<decimal>();
+    List<string> sumDt = new List<string>();
+    List<decimal> liAtl = new List<decimal>();
+    List<decimal> liCtl = new List<decimal>();
+    List<decimal> liTsb = new List<decimal>();
+    Strava.Athletes.Athlete athleteData = ViewData["ath"] as Strava.Athletes.Athlete;
+
+
+}
+<div class="container">
+    <div class="row">
+        <div class="col-sm-4" style="max-width:200px;">
+            <ul class="list-group">
+                <li class="list-group-item">
+                    <img class="rounded" src="@athleteData.Profile" style="max-width:80px" />
+                </li>
+                <li class="list-group-item">
+                    @athleteData.FirstName
+                    @athleteData.LastName
+                </li>
+                <li class="list-group-item">
+                    @athleteData.Weight
+                    kg
+                </li>
+                <li class="list-group-item">
+                    @athleteData.Ftp
+                    watts
+                </li>
+                <li class="list-group-item">
+                    @{
+                        var wpk = athleteData.Ftp / athleteData.Weight;
+                    }
+                    @Math.Round(wpk.Value, 2)
+                    w/kg
+                </li>
+                <li class="list-group-item">
+                    @sum.ActivityCount activites
+                </li>
+                <li class="list-group-item">
+                    @sum.Duration.Hours hours
+                </li>
+
+            </ul>
+        </div>
+        <div class="col-sm-8">
+            <div id="divFix">
+                <div id="carouselExampleIndicators" class="carousel slide" data-ride="carousel">
+                    <ol class="carousel-indicators">
+                        <li data-target="#carouselExampleIndicators" data-slide-to="0" class="active"></li>
+                        <li data-target="#carouselExampleIndicators" data-slide-to="1"></li>
+                    </ol>
+                    <div class="carousel-inner" role="listbox">
+                        <div class="carousel-item active">
+                            <div id="wrapper" style="position: relative; height: 70vh; width:100%">
+                                <canvas id="myLineChart"></canvas>
+                            </div>
+                        </div>
+                        <div class="carousel-item">
+                            <div id="wrapr" style="position: relative; height: 70vh; width:100%">
+                                <canvas id="myDonutChart" height="400" width="900"></canvas>
+                            </div>
+                        </div>
+
+                    </div>
+                    <a class="carousel-control-prev" href="#carouselExampleIndicators" role="button" data-slide="prev">
+                        <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+                        <span class="sr-only">Previous</span>
+                    </a>
+                    <a class="carousel-control-next" href="#carouselExampleIndicators" role="button" data-slide="next">
+                        <span class="carousel-control-next-icon" aria-hidden="true"></span>
+                        <span class="sr-only">Next</span>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <br />
+    <br />
+
+
+    <div class="row">
+        <table class="table  table-hover table-sm" id="data">
+            <thead>
+                <tr class="tableHeader">
+                    <th>Date/Time</th>
+                    <th class="hidden-sm-down">Name</th>
+                    <th>Type</th>
+                    <th>Duration</th>
+                    <th class="hidden-sm-down">Distance</th>
+                    <th class="hidden-xs-down">Average Speed</th>
+                    <th class="hidden-xs-down">Average Power</th>
+                    <th>Tss</th>
+                    <th class="hidden-sm-down">Fatigue atl</th>
+                    <th class="hidden-sm-down">Fitness ctl</th>
+                    <th class="hidden-sm-down">Form tsb</th>
+                </tr>
+            </thead>
+
+            <tbody>
+                @{
+                    var test = ViewData["info"] as List<Strava.Activities.ActivitySummary>;
+                    decimal FTP = 325;
+                    decimal atlY = 0;
+                    decimal ctlY = 0;
+                    decimal dailyTss = 0;
+
+
+                    DateTime first = new DateTime(2017, 10, 30).Date;
+                    int i = 0;
+
+                    while (i < test.Count())
+                    {
+                        var item = test[i];
+
+                        var t = item.ElapsedTimeSpan;
+                        var time = string.Format("{0:D2}:{1:D2}:{2:D2}", t.Hours, t.Minutes, t.Seconds);
+
+                        var dist = Math.Round(item.Distance / 1000);
+                        var avSpeed = Math.Round((item.AverageSpeed) * 3.6, 1);
+
+
+                        decimal sec = item.MovingTime;
+                        decimal np = item.WeightedAverageWatts;
+                        decimal intensFac = np / FTP;
+                        decimal tss = Math.Round((sec * np * intensFac) / (FTP * 3600) * 100);
+
+                        decimal atl = Math.Round(atlY + (dailyTss - atlY) / 5, 2);
+                        decimal ctl = Math.Round(ctlY + (dailyTss - ctlY) / 42, 2);
+                        decimal tsb = ctl - atl;
+
+                        if (first == test[i].DateTimeStart.Date)
+                        {
+                            <tr id="rideRow" class="inf rideRow" data-id="@item.Id" data-toggle="modal" data-target="#myModal">
+                                <td>@item.DateTimeStart.ToShortTimeString()</td>
+                                <td class="hidden-sm-down">@item.Name</td>
+                                @{
+                                    if (item.Type.ToString() == "WeightTraining")
+                                    {
+                                        <td><img src="https://png.icons8.com/dumbbell/win8/21/000000"></td>
+                                    }
+                                    else
+                                    {
+                                        <td><i class="fa fa-bicycle" aria-hidden="true"></i></td>
+                                    }
+
+                                }
+                                <td>@time</td>
+                                <td class="hidden-sm-down">@dist  km</td>
+                                <td class="hidden-xs-down">@avSpeed km/h</td>
+                                <td class="hidden-xs-down">@Math.Round(item.AveragePower) watts</td>
+                                <td>
+                                    @{ if (item.Type.ToString() == "WeightTraining")
+                                        {
+                                            tss = 50;
+                                        };} @tss tss
+                                    </td>
+
+
+                                    <td class="hidden-sm-down"></td>
+                                    <td class="hidden-sm-down"></td>
+                                    <td class="hidden-sm-down"></td>
+                                </tr>
+                                            dailyTss = dailyTss + tss;
+                                            data.Add(dailyTss);
+                                            liAtl.Add(atl);
+                                            liCtl.Add(ctl);
+                                            liTsb.Add(tsb);
+                                            sumDt.Add(item.DateTimeStart.ToShortDateString());
+                                            i++;
+                                        }
+                                        else
+                                        {
+                                            first = first.AddDays(1);
+                                            <tr class="totalStats">
+                                                <td>@first.AddDays(-1).ToShortDateString()</td>
+                                                <td colspan="7">Total TSS = @dailyTss</td>
+                                                <td class="totalAtl hidden-sm-down">@atl</td>
+                                                <td class="hidden-sm-down">@ctl</td>
+                                                <td class="hidden-sm-down">@tsb</td>
+                                            </tr>
+
+                                            <tr>
+                                                <td colspan="11"></td>
+                                            </tr>
+                                            dailyTss = 0;
+                                            if (first != test[i].DateTimeStart.Date)
+                                            {
+                                                tss = 0;
+
+                                                <tr class="table-active">
+                                                    <td colspan="11" style="text-align:center;">No ride</td>
+                                                </tr>
+                                                }
+                                            }
+                                            atlY = atl;
+                                            ctlY = ctl;
+                                        }
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+
+<div class="modal fade" id="myModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="exampleModalLabel">Ride</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div id="#rideData"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+
+<script>
+
+
+    $('.rideRow').click(function () {
+        var id = $(this).attr("data-id");
+        $.ajax({
+            url: "/strava/ridedata",
+            type: "GET",
+            data: { "Id": id },
+            success: function (result) {
+                alert("done");
+                $(".modal-body").html(result);
+            },
+            error: function (xhr) {
+                alert('error');
+
+            }
+
+        })
+    })
+
+    var atlArr = [];
+    $(document).ready(toDo);
+
+    function toDo() {
+        $("table tr.totalStats td.totalAtl").each(function () {
+            point = $(this).text();
+            atlArr.push.point;
+
+        })
+
+    }
+
+    @{
+        var weeklyDone = Math.Round(sum.TotalTime.TotalHours, 1);
+    }
+    var weekConv = [@Html.Raw(Json.Serialize(weeklyDone.ToString()))];
+   var weekRemain
+    var targ = 10;
+    if (weekConv < targ) {
+        weekRemain = targ - weekConv;
+    }
+    else {
+        weekRemain = 0
+    }
+
+
+
+
+    var ctx = document.getElementById("myDonutChart").getContext('2d');
+    ctx.canvas.height = window.innerHeight/3;
+    var myChart = new Chart(ctx, {
+        type: 'pie',
+        data: {
+            labels: ["Done", "Remaining"],
+            datasets: [{
+                backgroundColor: [
+                    "#002642",
+                    "#EEF4ED",
+                    "#95a5a6",
+                    "#9b59b6",
+                    "#f1c40f",
+                    "#e74c3c",
+                    "#34495e"
+                ],
+                data: [weekConv, weekRemain]
+            }]
+        },
+        options: {
+            layout: {
+                padding: {
+                    left: 30,
+                    right: 30,
+                    top: 0,
+                    bottom: 50
+                }
+            },
+            title: {
+                display: true,
+                text: 'Hours this week'
+            },
+            responsive: true,
+            maintainAspectRatio: false
+
+        }
+
+    });
+
+    var arrayConv = @Html.Raw(Json.Serialize(data));
+    var arrayConvDT = @Html.Raw(Json.Serialize(sumDt));
+    var liAtlConv = @Html.Raw(Json.Serialize(liAtl));
+    var liCtlConv = @Html.Raw(Json.Serialize(liCtl));
+    var liTsbConv = @Html.Raw(Json.Serialize(liTsb));
+
+
+    var ctx = document.getElementById("myLineChart");
+
+    var myLineChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+        labels: arrayConvDT,
+        datasets: [{
+            label: 'ATL',
+            backgroundColor: 'rgba(0,0,0,0)',
+            borderColor: 'rgb(0, 99, 132)',
+            data: liAtlConv,
+            borderWidth: 1,
+            yAxisID: 'B'
+        },
+
+
+        {
+            label: 'TSB',
+            backgroundColor: 'rgba(89, 120, 25, 0.2)',
+            borderColor: 'rgb(89, 120, 25)',
+            data: liTsbConv,
+            borderWidth: 1,
+            yAxisID: 'A'
+            },
+        {
+            label: 'CTL',
+            backgroundColor: 'rgba(0, 12, 178, 0.2)',
+            borderColor: 'rgba(0, 12, 178, 0.8)',
+            data: liCtlConv,
+            borderWidth: 1,
+            yAxisID: 'B'
+
+        }],
+
+    },
+    options: {
+        elements: {
+            point: {
+                radius: 1
+            }
+        },
+        layout: {
+            padding: {
+                left: 30,
+                right: 30,
+                top: 0,
+                bottom: 30
+            }
+        },
+        chartArea: {
+            backgroundColor: 'rgb(0,0,0)'
+        },
+        title: {
+            display: true,
+            text: 'PMC'
+        },
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+            yAxes: [{
+                id: 'A',
+                position: 'right',
+                type: 'linear'
+
+
+            }, {
+                    id: 'B',
+                    position: 'left',
+                    type: 'linear'
+            }]
+
+        }
+
+    }
+
+});
+
+
+    $(function () {
+
+        $("tbody").each(function (elem, index) {
+            var arr = $.makeArray($("tr", this).detach());
+            arr.reverse();
+            $(this).append(arr);
+        });
+    });
+</script>
